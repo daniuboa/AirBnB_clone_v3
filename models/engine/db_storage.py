@@ -75,37 +75,22 @@ class DBStorage:
         """call remove() method on the private session attribute"""
         self.__session.remove()
 
-    def get(self, cls, id):
-        """ retrieves one object """
-        try:
-            obj_dict = {}
-            if cls:
-                obj_class = self.__session.query(self.CNC.get(cls)).all()
-                for item in obj_class:
-                    obj_dict[item.id] = item
-            return obj_dict[id]
-        except:
-            return None
+    def get(self, cls=None, id=None):
+        """Returns obj based on class name and its ID"""
+        if cls is not None and id is not None:
+            try:
+                return self.__session.query(classes[cls]).get(id)
+            except:
+                return None
+
+        return None
 
     def count(self, cls=None):
-        """Counts number of objects in storage
-        Args:
-            cls: optional string representing the class name
-        Returns:
-            the number of objects in storage matching the given class name.
-            If no name is passed, returns the count of all objects in storage.
-        """
-        obj_dict = {}
-        if cls:
-            obj_class = self.__session.query(self.CNC.get(cls)).all()
-            for item in obj_class:
-                obj_dict[item.id] = item
-            return len(obj_dict)
+        """Returns the amount of objects"""
+        if cls is not None:
+            try:
+                return len(self.all(classes[cls]))
+            except:
+                return None
         else:
-            for cls_name in self.CNC:
-                if cls_name == 'BaseModel':
-                    continue
-                obj_class = self.__session.query(self.CNC.get(cls_name)).all()
-                for item in obj_class:
-                    obj_dict[item.id] = item
-            return len(obj_dict)
+            return len(self.all())

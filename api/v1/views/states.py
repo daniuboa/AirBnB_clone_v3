@@ -1,72 +1,76 @@
 #!/usr/bin/python3
-"""states"""
+"""
+States view for API
+"""
 from api.v1.views import app_views
-from flask import jsonify, abort, request
-from models import storage
-from models.state import State
-from datetime import datetime
-import uuid
+from flask import request, jsonify, abort
+from models import storage, state
 
 
-@app_views.route('/states/', methods=['GET'])
-def list_states():
-    '''Retrieves a list of all State objects'''
-    list_states = [obj.to_dict() for obj in storage.all("State").values()]
-    return jsonify(list_states)
+@app_views.route('/states', methods=['GET'], strict_slashes=False)
+def getallstate():
+    """Gets all states"""
+    res = []
+    for i in storage.all("State").values():
+        res.append(i.to_dict())
+
+    return jsonify(res)
 
 
-@app_views.route('/states/<state_id>', methods=['GET'])
-def get_state(state_id):
-    '''Retrieves a State object'''
-    all_states = storage.all("State").values()
-    state_obj = [obj.to_dict() for obj in all_states if obj.id == state_id]
-    if state_obj == []:
+@app_views.route('/states/<state_id>', methods=['GET'], strict_slashes=False)
+def getstate(state_id=None):
+    """Gets a state"""
+    s = storage.get("State", state_id)
+    if s is None:
         abort(404)
-    return jsonify(state_obj[0])
+    else:
+        return jsonify(s.to_dict())
 
 
-@app_views.route('/states/<state_id>', methods=['DELETE'])
-def delete_state(state_id):
-    '''Deletes a State object'''
-    all_states = storage.all("State").values()
-    state_obj = [obj.to_dict() for obj in all_states if obj.id == state_id]
-    if state_obj == []:
+@app_views.route('/states/<state_id>', methods=['DELETE'],
+                 strict_slashes=False)
+def deletestate(state_id=None):
+    """Deletes a state"""
+    s = storage.get("State", state_id)
+    if s is None:
         abort(404)
-    state_obj.remove(state_obj[0])
-    for obj in all_states:
-        if obj.id == state_id:
-            storage.delete(obj)
-            storage.save()
-    return jsonify({}), 200
+    else:
+        storage.delete(obj)
+        storage.save()
+        return jsonify({}), 200
 
 
-@app_views.route('/states/', methods=['POST'])
-def create_state():
-    '''Creates a State'''
-    if not request.get_json():
-        abort(400, 'Not a JSON')
-    if 'name' not in request.get_json():
-        abort(400, 'Missing name')
-    states = []
-    new_state = State(name=request.json['name'])
-    storage.new(new_state)
-    storage.save()
-    states.append(new_state.to_dict())
-    return jsonify(states[0]), 201
+@app_views.route('/states', methods=['POST'], strict_slashes=False)
+def createstate():
+    """Create a state"""
+    s = request.get_json(silent=True)
+    if s is None:
+        abort(400, "Not a JSON")
+    elif "name" not in s.keys():
+        abort(400, "Missing name")
+    else:
+        new_s = state.State(**s)
+        storage.new(new_s)
+        storage.save()
+        return jsonify(new_s.to_dict()), 201
 
 
-@app_views.route('/states/<state_id>', methods=['PUT'])
-def updates_state(state_id):
-    '''Updates a State object'''
-    all_states = storage.all("State").values()
-    state_obj = [obj.to_dict() for obj in all_states if obj.id == state_id]
-    if state_obj == []:
+@app_views.route('/states/<state_id>', methods=['PUT'], strict_slashes=False)
+def updatestate(state_id=None):
+    """Update a state"""
+    obj = storage.get("State", state_id)
+    if obj is None:
         abort(404)
-    if not request.get_json():
-        abort(400, 'Not a JSON')
-    state_obj[0]['name'] = request.json['name']
-    for obj in all_states:
-        if obj.id == state_id:
-            obj.name = request.json['name']
-    storage.save()
-    return jsonify(state_obj[0]), 200
+
+    s = request.get_json(silent=True)
+    if s is None:
+        abort(400, "Not a JSON")
+    else:
+        for k, v in s.items():
+            if k in ['id', 'created_at', 'updated_at']:
+                pass
+            else:
+                setattr(obj, k, v)
+        storage.save()
+        res = obj.to_dict()
+        return jsonify(res), 200
